@@ -11,7 +11,7 @@
     <div class="calculator-container">
         <h1>ΩmegaCalc 🌌</h1>
         <div class="display">
-            <input type="text" id="result" value="0"> 
+            <input type="text" id="result" value="0" readonly> 
             <div id="history"></div>
         </div>
         
@@ -23,9 +23,12 @@
 
             <button class="btn gugol" onclick="appendInput('tetr(')">↑↑</button> 
             <button class="btn gugol" onclick="appendInput('pent(')">↑↑↑</button>
-            <button class="btn gugol" onclick="appendInput('hex(')">↑⁴</button> <button class="btn gugol" onclick="appendInput('omega(')">$\omega$(x)</button>
+            <button class="btn gugol" onclick="appendInput('hex(')">↑⁴</button>
+            <button class="btn gugol" onclick="appendInput('omega(')">$\omega$(x)</button>
 
-            <button class="btn gugol" onclick="appendInput('ACKER(')">A(m,n)</button> <button class="btn gugol" onclick="appendInput('f_bhi(')">f(bhi)</button> <button class="btn special" onclick="appendInput('(')">(</button>
+            <button class="btn gugol" onclick="appendInput('ACKER(')">A(m,n)</button>
+            <button class="btn gugol" onclick="appendInput('f_bhi(')">f(bhi)</button>
+            <button class="btn special" onclick="appendInput('(')">(</button>
             <button class="btn special" onclick="appendInput(')')">)</button>
 
             <button class="btn num" onclick="appendInput('7')">7</button>
@@ -45,7 +48,7 @@
 
             <button class="btn num zero" onclick="appendInput('0')">0</button>
             <button class="btn num" onclick="appendInput('.')">.</button>
-            <button class="btn equal" onclick="calculate()">=</button>
+            <button class="btn equal" onclick="calculate()" style="grid-column: span 2;">=</button>
         </div>
         <p class="note">⚠️ **Для $35 \times 10^{238}$ используйте $35E238$. Для функций с запятой используйте $tetr(a, b)$ и $ACKER(m, n)$.**</p>
     </div>
