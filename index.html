@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GugolCalc - Гугологический Калькулятор</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="calculator-container">
+        <h1>GugolCalc 🌌</h1>
+        <div class="display">
+            <input type="text" id="result" value="0" readonly>
+            <div id="history"></div>
+        </div>
+        
+        <div class="keypad">
+            <button class="btn clear" onclick="clearDisplay()">AC</button>
+            <button class="btn special" onclick="appendInput('E')">E (×10^)</button>
+            <button class="btn operator" onclick="appendInput('^')">^</button>
+            <button class="btn operator" onclick="appendInput('/')">/</button>
+
+            <button class="btn gugol" onclick="appendInput('tetr(')">tetr(↑↑)</button>
+            <button class="btn gugol" onclick="appendInput('omega(')">ω(x)</button>
+            <button class="btn gugol" onclick="appendInput('f(')">f(x)</button>
+            <button class="btn operator" onclick="appendInput('*')">×</button>
+
+            <button class="btn num" onclick="appendInput('7')">7</button>
+            <button class="btn num" onclick="appendInput('8')">8</button>
+            <button class="btn num" onclick="appendInput('9')">9</button>
+            <button class="btn operator" onclick="appendInput('-')">-</button>
+
+            <button class="btn num" onclick="appendInput('4')">4</button>
+            <button class="btn num" onclick="appendInput('5')">5</button>
+            <button class="btn num" onclick="appendInput('6')">6</button>
+            <button class="btn operator" onclick="appendInput('+')">+</button>
+
+            <button class="btn num" onclick="appendInput('1')">1</button>
+            <button class="btn num" onclick="appendInput('2')">2</button>
+            <button class="btn num" onclick="appendInput('3')">3</button>
+            <button class="btn equal" onclick="calculate()">=</button>
+
+            <button class="btn num zero" onclick="appendInput('0')">0</button>
+            <button class="btn num" onclick="appendInput('.')">.</button>
+            <button class="btn special" onclick="appendInput('(')">(</button>
+            <button class="btn special" onclick="appendInput(')')">)</button>
+        </div>
+        <p class="note">⚠️ **Тетрация ($\uparrow\uparrow$), $\omega(x)$, $f(x)$ и другие функции сейчас не реализованы. Они добавлены только для интерфейса.**</p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
