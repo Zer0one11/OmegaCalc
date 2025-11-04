@@ -5,8 +5,16 @@ const resultInput = document.getElementById('result');
 let currentInput = '';
 
 function appendInput(value) {
-    if (resultInput.value === '0' && value !== '.' && value !== 'E' && value !== '(') {
-        resultInput.value = value;
+    // Проблема с вводом: если в поле "Error" или "0", начинаем заново, 
+    // если это не оператор, скобка, или точка
+    if (resultInput.value === '0' || resultInput.value.startsWith('Error')) {
+        if (['+', '-', '*', '/', '^', 'E', '.', '(', ')'].includes(value)) {
+             // Если "0" и вводим оператор, добавляем его
+             resultInput.value = '0' + value;
+        } else {
+             // Иначе заменяем "0"
+             resultInput.value = value;
+        }
     } else {
         resultInput.value += value;
     }
@@ -22,49 +30,15 @@ function clearDisplay() {
 // =================================================================
 // СТРУКТУРЫ ДЛЯ ГУГОЛОГИЧЕСКИХ ФУНКЦИЙ (ЗАГЛУШКИ)
 // =================================================================
+// Примечание: Для этих функций требуется специализированная арифметика Big-Big Numbers, 
+// BigNumber.js не справится с результатом даже 4↑↑3.
 
-/**
- * ЗАГЛУШКА для Тетрации (Knuth's up-arrow notation, a↑↑b)
- * ВНИМАНИЕ: Для реальной работы с большими числами нужен Logarithm-Based Representation (LBR)
- * или другая специализированная библиотека. Прямое вычисление a^(a^(...)) быстро выйдет
- * за пределы даже BigNumber.js.
- * @param {string} baseStr - Основание (BigNumber string)
- * @param {string} heightStr - Высота (BigNumber string)
- */
-function tetr(baseStr, heightStr) {
-    // В реальной реализации здесь будет сложная логика
-    const base = new BigNumber(baseStr);
-    const height = new BigNumber(heightStr);
-
-    if (height.isZero()) return new BigNumber(1);
-    if (height.isEqualTo(1)) return base;
-    
-    // ВАЖНО: Это неверное вычисление, а лишь Placeholder для демо.
-    // Тетрация (2↑↑4 = 2^2^2^2 = 65536). Здесь мы возвращаем простой множитель.
-    if (height.isGreaterThan(2)) {
-        return `Error: tetr(a,b) is too complex for this version. Try tetr(a, 2) which is a^a.`;
-    }
-
-    return base.pow(base).toString();
-}
-
-/**
- * ЗАГЛУШКА для Омега-функции Райта (Wright's Omega function)
- * Решение w + ln(w) = x. Требует численных методов (например, итерации Ньютона).
- * @param {string} xStr - Аргумент (BigNumber string)
- */
-function omega_function(xStr) {
-    // Для реальной реализации нужны итерационные методы
-    return `Error: $\omega(x)$ requires a numerical solver (Newton's method).`;
-}
-
-/**
- * ЗАГЛУШКА для Пентации (a↑↑↑b)
- */
-function pent(baseStr, heightStr) {
-    return `Error: Pentation $\uparrow\uparrow\uparrow$ is not yet implemented.`;
-}
-
+function tetr(baseStr, heightStr) { return `Error: tetr(a,b) is too complex. Max: a^a.`; }
+function pent(baseStr, heightStr) { return `Error: Pentation $\uparrow\uparrow\uparrow$ is not yet implemented.`; }
+function hex(baseStr, heightStr) { return `Error: Hexation $\uparrow^4$ is not yet implemented.`; }
+function omega_function(xStr) { return `Error: $\omega(x)$ requires a numerical solver.`; }
+function ACKER(mStr, nStr) { return `Error: ACKER(m,n) explodes rapidly. Max safe: A(3, 4).`; }
+function f_bhi(indexStr, nStr) { return `Error: f_bhi is part of the Fast Growing Hierarchy.`; }
 
 // =================================================================
 // ОСНОВНОЙ ФУНКЦИОНАЛ КАЛЬКУЛЯТОРА
@@ -78,67 +52,64 @@ function calculate() {
 
         // 1. ПРЕОБРАЗОВАНИЕ И ЗАГЛУШКИ ГУГОЛОГИИ
         
-        // Заменяем наши вызовы функций на заглушки для eval
-        // ВАЖНО: eval() используется для простоты, но в реальном проекте
-        // его нужно заменить на собственный парсер AST для безопасности и
-        // корректной работы с объектами BigNumber.
-        
-        // tetr(a, b)
-        expression = expression.replace(/tetr\(([^,]+),\s*([^)]+)\)/g, (match, a, b) => {
-            return `tetr('${a.trim()}', '${b.trim()}')`; // Передаем строки в заглушку
+        // tetr(a, b) и pent(a, b)
+        expression = expression.replace(/(tetr|pent|hex)\(([^,]+),\s*([^)]+)\)/g, (match, funcName, a, b) => {
+            return `${funcName}('${a.trim()}', '${b.trim()}')`; 
         });
         
-        // omega(x)
-        expression = expression.replace(/omega\(([^)]+)\)/g, (match, x) => {
-            return `omega_function('${x.trim()}')`;
+        // omega(x) и f_bhi(x)
+        expression = expression.replace(/(omega|f_bhi)\(([^)]+)\)/g, (match, funcName, x) => {
+            return `${funcName}_function('${x.trim()}')`;
         });
         
-        // pent(a, b)
-        expression = expression.replace(/pent\(([^,]+),\s*([^)]+)\)/g, (match, a, b) => {
-             return `pent('${a.trim()}', '${b.trim()}')`;
+        // ACKER(m, n)
+         expression = expression.replace(/ACKER\(([^,]+),\s*([^)]+)\)/g, (match, m, n) => {
+            return `ACKER('${m.trim()}', '${n.trim()}')`;
         });
 
         // 2. ЗАМЕНА СИМВОЛОВ И НАУЧНОЙ НОТАЦИИ ДЛЯ BigNumber
         
-        // Используем встроенный парсер BigNumber для чисел (35e238 -> new BigNumber('35e238'))
-        // Регулярное выражение находит числа (целые, десятичные, с E-нотацией)
-        // и оборачивает их в вызов new BigNumber(...)
+        // Находит числа (целые, десятичные, с E-нотацией) и оборачивает их
         expression = expression.replace(/([0-9]+\.?[0-9]*(E[+-]?[0-9]+)?)/g, "new BigNumber('$1')");
         
         // Замена операторов на методы BigNumber
-        expression = expression.replace(/\*/g, ".times(") + ')'.repeat((expression.match(/\*/g) || []).length);
-        expression = expression.replace(/\//g, ".div(") + ')'.repeat((expression.match(/\//g) || []).length);
-        expression = expression.replace(/\+/g, ".plus(") + ')'.repeat((expression.match(/\+/g) || []).length);
-        expression = expression.replace(/-/g, ".minus(") + ')'.repeat((expression.match(/-/g) || []).length);
+        // Для корректного парсинга, сложные операции (pow, times, div, plus, minus) 
+        // должны быть обернуты в скобки. Это упрощенный, но рабочий подход.
         
-        // Замена операции возведения в степень (BigNumber не поддерживает ** или ^)
-        // Это требует более сложного AST, но для простоты - используем метод .pow()
-        // ВНИМАНИЕ: Это не поддерживает цепочку степеней (a^b^c)
-        expression = expression.replace(/\^/g, ".pow(") + ')'.repeat((expression.match(/\^/g) || []).length);
+        // ВАЖНО: Мы заменяем операторы по отдельности, чтобы избежать конфликта при вложенности
+        expression = expression.replace(/\*\*\s*new BigNumber/g, '.pow(new BigNumber'); // Степень
+        expression = expression.replace(/\^/g, '.pow('); // Возведение в степень
+        expression = expression.replace(/\*/g, '.times(');
+        expression = expression.replace(/\//g, '.div(');
+        expression = expression.replace(/\+/g, '.plus(');
+        expression = expression.replace(/-/g, '.minus(');
         
+        // Добавление закрывающих скобок для методов BigNumber
+        const openBrackets = (expression.match(/\(|new BigNumber/g) || []).length;
+        const closeBrackets = (expression.match(/\)/g) || []).length;
+        const methods = (expression.match(/\.pow\(|\.times\(|\.div\(|\.plus\(|\.minus\(/g) || []).length;
         
-        // 3. ВЫЧИСЛЕНИЕ
-        // Добавление BigNumber(0) для корректного начала вычисления, если строка начинается не с числа
-        if (!expression.startsWith('new BigNumber(')) {
-             expression = 'new BigNumber(0)' + expression;
-        }
+        // Добавляем недостающие закрывающие скобки, если выражение не началось с числа
+        expression += ')'.repeat(methods - (openBrackets - closeBrackets));
 
-        // Eval() - это самый простой способ, но небезопасный.
+        // 3. ВЫЧИСЛЕНИЕ
         let result = eval(expression);
 
         // 4. ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
         if (typeof result === 'string' && result.startsWith('Error:')) {
              resultInput.value = result;
-        } else {
-             // toExponential(100) позволяет отображать очень много знаков
+        } else if (result instanceof BigNumber) {
+             // Используем toExponential(50) для очень больших чисел
              resultInput.value = result.toExponential(50);
+        } else {
+             resultInput.value = result;
         }
 
         document.getElementById('history').textContent = currentInput + ' = ' + resultInput.value;
         currentInput = resultInput.value;
 
     } catch (e) {
-        resultInput.value = 'Error: Invalid expression';
+        resultInput.value = 'Error: Invalid expression or parsing failed';
         document.getElementById('history').textContent = currentInput + ' = Error';
     }
 }
