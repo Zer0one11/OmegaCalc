@@ -1,19 +1,17 @@
-// Инициализация BigNumber, установление точности, например, 50 знаков после запятой
+// Инициализация BigNumber
 BigNumber.config({ DECIMAL_PLACES: 50, EXPONENTIAL_AT: 1e9 });
 
 const resultInput = document.getElementById('result');
 let currentInput = '';
 
 function appendInput(value) {
-    // Проблема с вводом: если в поле "Error" или "0", начинаем заново, 
-    // если это не оператор, скобка, или точка
     if (resultInput.value === '0' || resultInput.value.startsWith('Error')) {
-        if (['+', '-', '*', '/', '^', 'E', '.', '(', ')'].includes(value)) {
-             // Если "0" и вводим оператор, добавляем его
-             resultInput.value = '0' + value;
-        } else {
-             // Иначе заменяем "0"
+        // Если поле "0" или "Error", и вводим число, скобку, или E, то заменяем "0"
+        if (!['+', '-', '*', '/', '^', '.'].includes(value)) {
              resultInput.value = value;
+        } else {
+             // Иначе (если оператор), добавляем к "0"
+             resultInput.value += value;
         }
     } else {
         resultInput.value += value;
@@ -30,9 +28,8 @@ function clearDisplay() {
 // =================================================================
 // СТРУКТУРЫ ДЛЯ ГУГОЛОГИЧЕСКИХ ФУНКЦИЙ (ЗАГЛУШКИ)
 // =================================================================
-// Примечание: Для этих функций требуется специализированная арифметика Big-Big Numbers, 
-// BigNumber.js не справится с результатом даже 4↑↑3.
 
+// Функции-заглушки (stubs)
 function tetr(baseStr, heightStr) { return `Error: tetr(a,b) is too complex. Max: a^a.`; }
 function pent(baseStr, heightStr) { return `Error: Pentation $\uparrow\uparrow\uparrow$ is not yet implemented.`; }
 function hex(baseStr, heightStr) { return `Error: Hexation $\uparrow^4$ is not yet implemented.`; }
@@ -50,56 +47,68 @@ function calculate() {
     try {
         let expression = currentInput;
 
-        // 1. ПРЕОБРАЗОВАНИЕ И ЗАГЛУШКИ ГУГОЛОГИИ
+        // 1. ПРЕОБРАЗОВАНИЕ ВЫЗОВОВ ФУНКЦИЙ ГУГОЛОГИИ
         
-        // tetr(a, b) и pent(a, b)
-        expression = expression.replace(/(tetr|pent|hex)\(([^,]+),\s*([^)]+)\)/g, (match, funcName, a, b) => {
+        // Функции с двумя аргументами: tetr(a, b), pent(a, b), hex(a, b), ACKER(m, n)
+        expression = expression.replace(/(tetr|pent|hex|ACKER)\(([^,]+),\s*([^)]+)\)/g, (match, funcName, a, b) => {
             return `${funcName}('${a.trim()}', '${b.trim()}')`; 
         });
         
-        // omega(x) и f_bhi(x)
-        expression = expression.replace(/(omega|f_bhi)\(([^)]+)\)/g, (match, funcName, x) => {
+        // Функции с одним аргументом: omega(x), f_bhi(x)
+        expression = expression.replace(/(omega)\(([^)]+)\)/g, (match, funcName, x) => {
             return `${funcName}_function('${x.trim()}')`;
         });
         
-        // ACKER(m, n)
-         expression = expression.replace(/ACKER\(([^,]+),\s*([^)]+)\)/g, (match, m, n) => {
-            return `ACKER('${m.trim()}', '${n.trim()}')`;
-        });
+        // 2. ЗАМЕНА СИМВОЛОВ НАУЧНОЙ НОТАЦИИ И ОПЕРАТОРОВ НА МЕТОДЫ BigNumber
 
-        // 2. ЗАМЕНА СИМВОЛОВ И НАУЧНОЙ НОТАЦИИ ДЛЯ BigNumber
-        
-        // Находит числа (целые, десятичные, с E-нотацией) и оборачивает их
+        // Шаг A: Оборачиваем числа (включая E-нотацию) в конструктор BigNumber
+        // Это делается первым, чтобы не затрагивать числа в строковых аргументах функций-заглушек
         expression = expression.replace(/([0-9]+\.?[0-9]*(E[+-]?[0-9]+)?)/g, "new BigNumber('$1')");
         
-        // Замена операторов на методы BigNumber
-        // Для корректного парсинга, сложные операции (pow, times, div, plus, minus) 
-        // должны быть обернуты в скобки. Это упрощенный, но рабочий подход.
+        // Шаг B: Заменяем операторы на цепочки методов BigNumber,
+        // используя '$$' как временный символ для замены закрывающей скобки.
+        // Мы делаем это в порядке приоритета: ^, *, /, +, -
         
-        // ВАЖНО: Мы заменяем операторы по отдельности, чтобы избежать конфликта при вложенности
-        expression = expression.replace(/\*\*\s*new BigNumber/g, '.pow(new BigNumber'); // Степень
-        expression = expression.replace(/\^/g, '.pow('); // Возведение в степень
-        expression = expression.replace(/\*/g, '.times(');
-        expression = expression.replace(/\//g, '.div(');
-        expression = expression.replace(/\+/g, '.plus(');
-        expression = expression.replace(/-/g, '.minus(');
+        // Степень: a^b -> a.pow(b)
+        // ВНИМАНИЕ: Для корректной работы с BigNumber в eval, нам нужна особая обработка.
+        // Проще всего использовать временный токен, который гарантирует правильное закрытие.
+        expression = expression.replace(/\^/g, '.pow$$(');
         
-        // Добавление закрывающих скобок для методов BigNumber
-        const openBrackets = (expression.match(/\(|new BigNumber/g) || []).length;
-        const closeBrackets = (expression.match(/\)/g) || []).length;
-        const methods = (expression.match(/\.pow\(|\.times\(|\.div\(|\.plus\(|\.minus\(/g) || []).length;
+        // Умножение: a * b -> a.times(b)
+        expression = expression.replace(/\*/g, '.times$$(');
         
-        // Добавляем недостающие закрывающие скобки, если выражение не началось с числа
-        expression += ')'.repeat(methods - (openBrackets - closeBrackets));
+        // Деление: a / b -> a.div(b)
+        expression = expression.replace(/\//g, '.div$$(');
+        
+        // Сложение: a + b -> a.plus(b)
+        expression = expression.replace(/\+/g, '.plus$$(');
+        
+        // Вычитание: a - b -> a.minus(b)
+        // Унарный минус (например, в самом начале или после открывающей скобки) 
+        // не заменяется на .minus
+        expression = expression.replace(/([^.()\s]|^)\s*-\s*new BigNumber/g, '$1.minus$$(');
 
-        // 3. ВЫЧИСЛЕНИЕ
+        // Шаг C: Правильно закрываем скобки.
+        // Заменяем все временные токены '$$(' на '('
+        expression = expression.replace(/\$\$/g, '');
+
+        // 3. ДОПОЛНИТЕЛЬНОЕ ЗАКРЫТИЕ СКОБОК
+        // Убеждаемся, что все методы BigNumber (pow, times, div и т.д.) имеют закрывающую скобку.
+        const openMethods = (expression.match(/\.(pow|times|div|plus|minus)\(/g) || []).length;
+        const totalOpenBrackets = (expression.match(/\(/g) || []).length;
+        const totalCloseBrackets = (expression.match(/\)/g) || []).length;
+
+        // Если открытых скобок больше, чем закрытых (из-за нашей замены), добавляем их в конце.
+        expression += ')'.repeat(totalOpenBrackets - totalCloseBrackets);
+
+        // 4. ВЫЧИСЛЕНИЕ (используем eval)
         let result = eval(expression);
 
-        // 4. ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
+        // 5. ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
         if (typeof result === 'string' && result.startsWith('Error:')) {
              resultInput.value = result;
         } else if (result instanceof BigNumber) {
-             // Используем toExponential(50) для очень больших чисел
+             // Используем toExponential(50) для очень больших чисел (например, 35E238)
              resultInput.value = result.toExponential(50);
         } else {
              resultInput.value = result;
@@ -109,7 +118,8 @@ function calculate() {
         currentInput = resultInput.value;
 
     } catch (e) {
-        resultInput.value = 'Error: Invalid expression or parsing failed';
+        // console.error(e); // Для отладки
+        resultInput.value = 'Error: Parsing failed. Check syntax.';
         document.getElementById('history').textContent = currentInput + ' = Error';
     }
 }
